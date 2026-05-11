@@ -1,4 +1,4 @@
-package com.gaminion.gaminion_api;
+package com.gaminion;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
