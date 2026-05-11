@@ -4,6 +4,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 @Repository
 public interface NoteEntryRepository extends JpaRepository<NoteEntry, Long> {
@@ -13,4 +15,7 @@ public interface NoteEntryRepository extends JpaRepository<NoteEntry, Long> {
     List<NoteEntry> findByTypeAndReminderDateTimeBeforeAndReminderSentFalse(
             EntryType type, LocalDateTime dateTime
     );
+
+    @Query("SELECT COUNT(n) FROM NoteEntry n WHERE n.notebook.game.id = :gameId AND n.notebook.user.id = :userId")
+    int countByGameIdAndUserId(@Param("gameId") Long gameId, @Param("userId") Long userId);
 }
