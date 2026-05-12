@@ -11,9 +11,9 @@ public interface ChecklistItemRepository extends JpaRepository<ChecklistItem, Lo
     List<ChecklistItem> findByNoteEntryIdOrderByDisplayOrderAsc(Long noteEntryId);
     List<ChecklistItem> findByNoteEntryIdAndIsCheckedFalse(Long noteEntryId);
 
-    @Query("SELECT COUNT(c) FROM ChecklistItem c WHERE c.notebook.game.id = :gameId AND c.notebook.user.id = :userId")
-    int countByGameIdAndUserId(@Param("gameId") Long gameId, @Param("userId") Long userId);
+    @Query("SELECT COUNT(c) FROM ChecklistItem c WHERE c.noteEntry.notebook.game.id = :gameId")
+    int countByGameId(@Param("gameId") Long gameId);
 
-    @Query("SELECT COUNT(c) FROM ChecklistItem c WHERE c.notebook.game.id = :gameId AND c.notebook.user.id = :userId AND c.checked = true")
-    int countCompletedByGameIdAndUserId(@Param("gameId") Long gameId, @Param("userId") Long userId);
+    @Query("SELECT COUNT(c) FROM ChecklistItem c WHERE c.noteEntry.notebook.game.id = :gameId AND c.isChecked = true")
+    int countCompletedByGameId(@Param("gameId") Long gameId);
 }

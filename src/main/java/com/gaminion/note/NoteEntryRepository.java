@@ -16,6 +16,6 @@ public interface NoteEntryRepository extends JpaRepository<NoteEntry, Long> {
             EntryType type, LocalDateTime dateTime
     );
 
-    @Query("SELECT COUNT(n) FROM NoteEntry n WHERE n.notebook.game.id = :gameId AND n.notebook.user.id = :userId")
-    int countByGameIdAndUserId(@Param("gameId") Long gameId, @Param("userId") Long userId);
+    @Query("SELECT COUNT(n) FROM NoteEntry n WHERE n.notebook.game.id = :gameId")
+    int countByGameId(@Param("gameId") Long gameId);
 }

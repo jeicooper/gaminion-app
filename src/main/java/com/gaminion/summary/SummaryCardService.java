@@ -1,56 +1,61 @@
 package com.gaminion.summary;
 
-import com.gaminion.auth.User;
-import com.gaminion.auth.UserRepository;
-import com.gaminion.game.Game;
-import com.gaminion.game.GameRepository;
-import com.gaminion.note.ChecklistItemRepository;
-import com.gaminion.note.NoteEntryRepository;
+import com.gaminion.session.Session;
 import com.gaminion.session.SessionRepository;
-import lombok.RequiredArgsConstructor;
+import com.gaminion.session.SessionStatus;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDate;
+import java.io.File;
+import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class SummaryCardService {
 
-    private final GameRepository gameRepository;
-    private final SessionRepository sessionRepository;
-    private final NoteEntryRepository noteEntryRepository;
-    private final ChecklistItemRepository checklistItemRepository;
-    private final UserRepository userRepository;
+    @Autowired
+    private SummaryCardRepository summaryCardRepository;
 
-    public SummaryCardDTO generateSummary(Long gameId, String username) {  // changed Long userId → String username
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Long userId = user.getId();  // resolve userId here
+    @Autowired
+    private SessionRepository sessionRepository;
 
-        Game game = gameRepository.findById(gameId)
-                .orElseThrow(() -> new RuntimeException("Game not found"));
+    @Autowired
+    private CardImageGenerator cardImageGenerator;
 
-        long totalMinutes = sessionRepository.sumDurationByGameAndUser(gameId, userId);
-        int totalNotes = noteEntryRepository.countByGameIdAndUserId(gameId, userId);
-        int totalChecklists = checklistItemRepository.countByGameIdAndUserId(gameId, userId);
-        int completedChecklists = checklistItemRepository.countCompletedByGameIdAndUserId(gameId, userId);
-        double completionPct = totalChecklists > 0
-                ? Math.round((completedChecklists * 100.0 / totalChecklists) * 10.0) / 10.0
-                : 0.0;
+    @Value("${gaminion.storage.path}")
+    private String storagePath;
 
-        LocalDate firstSession = sessionRepository.findEarliestSessionDate(gameId, userId);
-        LocalDate lastSession = sessionRepository.findLatestSessionDate(gameId, userId);
+    public SummaryCard generateCard(Long sessionId) {
+        Session session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
 
-        return SummaryCardDTO.builder()
-                .gameId(gameId)
-                .gameName(game.getName())
-                .totalPlaytimeMinutes(totalMinutes)
-                .totalNotes(totalNotes)
-                .totalChecklists(totalChecklists)
-                .completedChecklists(completedChecklists)
-                .checklistCompletionPercent(completionPct)
-                .firstSession(firstSession)
-                .lastSession(lastSession)
-                .build();
+        if (session.getStatus() != SessionStatus.COMPLETED) {
+            throw new RuntimeException("Cannot generate card for an active session. Stop the session first.");
+        }
+
+        summaryCardRepository.findBySessionId(sessionId).ifPresent(existing -> {
+            throw new RuntimeException("Summary card already exists for this session");
+        });
+
+        try {
+            File cardFile = cardImageGenerator.generateCard(session, storagePath);
+
+            SummaryCard card = new SummaryCard();
+            card.setSession(session);
+            card.setImagePath(cardFile.getAbsolutePath());
+            card.setShareableFileName(cardFile.getName());
+
+            return summaryCardRepository.save(card);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate summary card: " + e.getMessage());
+        }
+    }
+
+    public SummaryCard getCardBySession(Long sessionId) {
+        return summaryCardRepository.findBySessionId(sessionId)
+                .orElseThrow(() -> new RuntimeException("No summary card found for this session"));
+    }
+
+    public List<SummaryCard> getCardsByGame(Long gameId) {
+        return summaryCardRepository.findBySessionGameId(gameId);
     }
 }
